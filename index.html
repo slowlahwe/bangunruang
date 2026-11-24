@@ -1,0 +1,595 @@
+classdef geospace_3d < matlab.apps.AppBase
+
+    properties (Access = public)
+        UIFigure matlab.ui.Figure
+        UIAxes matlab.ui.control.UIAxes
+
+        MasukanPanel matlab.ui.container.Panel
+        KeluaranPanel matlab.ui.container.Panel
+
+        BangunDropDown matlab.ui.control.DropDown
+
+        Ukuran1Label matlab.ui.control.Label
+        Ukuran2Label matlab.ui.control.Label
+        Ukuran3Label matlab.ui.control.Label
+
+        Ukuran1Edit matlab.ui.control.NumericEditField
+        Ukuran2Edit matlab.ui.control.NumericEditField
+        Ukuran3Edit matlab.ui.control.NumericEditField
+
+        ProsesButton matlab.ui.control.Button
+        HasilEdit matlab.ui.control.TextArea
+    end
+
+    methods (Access = private)
+
+        % Format angka tanpa nol desimal yang tidak diperlukan
+        function hasil = formatAngka(app,nilai)
+
+            hasil = sprintf('%.15g',nilai);
+
+        end
+
+
+        % Mengatur input berdasarkan bangun ruang
+        function BangunDropDownValueChanged(app,event)
+
+            bangun = app.BangunDropDown.Value;
+
+            switch bangun
+
+                case 'Kubus'
+
+                    app.Ukuran1Label.Text = 'Sisi:';
+                    app.Ukuran2Label.Text = '-';
+                    app.Ukuran3Label.Text = '-';
+
+                    app.Ukuran2Edit.Enable = 'off';
+                    app.Ukuran3Edit.Enable = 'off';
+
+                case 'Balok'
+
+                    app.Ukuran1Label.Text = 'Panjang:';
+                    app.Ukuran2Label.Text = 'Lebar:';
+                    app.Ukuran3Label.Text = 'Tinggi:';
+
+                    app.Ukuran2Edit.Enable = 'on';
+                    app.Ukuran3Edit.Enable = 'on';
+
+                case 'Tabung'
+
+                    app.Ukuran1Label.Text = 'Jari-jari:';
+                    app.Ukuran2Label.Text = 'Tinggi:';
+                    app.Ukuran3Label.Text = '-';
+
+                    app.Ukuran2Edit.Enable = 'on';
+                    app.Ukuran3Edit.Enable = 'off';
+
+                case 'Kerucut'
+
+                    app.Ukuran1Label.Text = 'Jari-jari:';
+                    app.Ukuran2Label.Text = 'Tinggi:';
+                    app.Ukuran3Label.Text = '-';
+
+                    app.Ukuran2Edit.Enable = 'on';
+                    app.Ukuran3Edit.Enable = 'off';
+
+                case 'Bola'
+
+                    app.Ukuran1Label.Text = 'Jari-jari:';
+                    app.Ukuran2Label.Text = '-';
+                    app.Ukuran3Label.Text = '-';
+
+                    app.Ukuran2Edit.Enable = 'off';
+                    app.Ukuran3Edit.Enable = 'off';
+
+            end
+
+            app.HasilEdit.Value = {
+                'Silakan masukkan ukuran bangun ruang.'
+                'Tekan tombol PROSES untuk menghitung.'
+            };
+
+            cla(app.UIAxes);
+
+        end
+
+
+        % Proses perhitungan dan visualisasi
+        function ProsesButtonPushed(app,event)
+
+            bangun = app.BangunDropDown.Value;
+
+            u1 = app.Ukuran1Edit.Value;
+            u2 = app.Ukuran2Edit.Value;
+            u3 = app.Ukuran3Edit.Value;
+
+            % Validasi input sesuai bangun ruang
+            switch bangun
+
+                case {'Kubus','Bola'}
+                    ukuran = u1;
+
+                case {'Tabung','Kerucut'}
+                    ukuran = [u1 u2];
+
+                case 'Balok'
+                    ukuran = [u1 u2 u3];
+
+            end
+
+            if any(~isfinite(ukuran)) || any(ukuran <= 0)
+
+                uialert(app.UIFigure,...
+                    'Semua ukuran harus berupa angka positif dan valid!',...
+                    'Peringatan');
+
+                return;
+
+            end
+
+            % Membersihkan visualisasi sebelumnya
+            cla(app.UIAxes);
+            hold(app.UIAxes,'on');
+
+            % Inisialisasi hasil
+            volume = NaN;
+            luas = NaN;
+
+            % ================= KUBUS =================
+            switch bangun
+
+                case 'Kubus'
+
+                    s = u1;
+
+                    V = [
+                        0 0 0;
+                        s 0 0;
+                        s s 0;
+                        0 s 0;
+                        0 0 s;
+                        s 0 s;
+                        s s s;
+                        0 s s
+                    ];
+
+                    F = [
+                        1 2 3 4;
+                        5 6 7 8;
+                        1 2 6 5;
+                        2 3 7 6;
+                        3 4 8 7;
+                        4 1 5 8
+                    ];
+
+                    patch(app.UIAxes,...
+                        'Vertices',V,...
+                        'Faces',F,...
+                        'FaceColor',[0.2 0.6 0.9],...
+                        'FaceAlpha',0.85,...
+                        'EdgeColor','k',...
+                        'LineWidth',1.2);
+
+                    volume = power(s,3);
+                    luas = 6*power(s,2);
+
+                    keterangan = sprintf(...
+                        'Sisi = %s',...
+                        app.formatAngka(s));
+
+                    rumusVolume = 'V = s³';
+                    rumusLuas = 'LP = 6 × s²';
+
+                    langkahVolume = sprintf(...
+                        'V = %s³ = %s',...
+                        app.formatAngka(s),...
+                        app.formatAngka(volume));
+
+                    langkahLuas = sprintf(...
+                        'LP = 6 × %s² = %s',...
+                        app.formatAngka(s),...
+                        app.formatAngka(luas));
+
+
+                % ================= BALOK =================
+                case 'Balok'
+
+                    p = u1;
+                    l = u2;
+                    t = u3;
+
+                    V = [
+                        0 0 0;
+                        p 0 0;
+                        p l 0;
+                        0 l 0;
+                        0 0 t;
+                        p 0 t;
+                        p l t;
+                        0 l t
+                    ];
+
+                    F = [
+                        1 2 3 4;
+                        5 6 7 8;
+                        1 2 6 5;
+                        2 3 7 6;
+                        3 4 8 7;
+                        4 1 5 8
+                    ];
+
+                    patch(app.UIAxes,...
+                        'Vertices',V,...
+                        'Faces',F,...
+                        'FaceColor',[0.3 0.8 0.5],...
+                        'FaceAlpha',0.85,...
+                        'EdgeColor','k',...
+                        'LineWidth',1.2);
+
+                    volume = p*l*t;
+
+                    luas = 2*(p*l+p*t+l*t);
+
+                    keterangan = sprintf(...
+                        'Panjang = %s | Lebar = %s | Tinggi = %s',...
+                        app.formatAngka(p),...
+                        app.formatAngka(l),...
+                        app.formatAngka(t));
+
+                    rumusVolume = 'V = p × l × t';
+                    rumusLuas = 'LP = 2 × (pl + pt + lt)';
+
+                    langkahVolume = sprintf(...
+                        'V = %s × %s × %s = %s',...
+                        app.formatAngka(p),...
+                        app.formatAngka(l),...
+                        app.formatAngka(t),...
+                        app.formatAngka(volume));
+
+                    langkahLuas = sprintf(...
+                        'LP = 2 × (%s + %s + %s) = %s',...
+                        app.formatAngka(p*l),...
+                        app.formatAngka(p*t),...
+                        app.formatAngka(l*t),...
+                        app.formatAngka(luas));
+
+
+                % ================= TABUNG =================
+                case 'Tabung'
+
+                    r = u1;
+                    t = u2;
+
+                    [X,Y,Z] = cylinder(r,100);
+
+                    Z = Z*t;
+
+                    surf(app.UIAxes,X,Y,Z,...
+                        'FaceColor',[0.2 0.7 0.9],...
+                        'EdgeColor','none',...
+                        'FaceAlpha',0.9);
+
+                    theta = linspace(0,2*pi,100);
+
+                    fill3(app.UIAxes,...
+                        r*cos(theta),...
+                        r*sin(theta),...
+                        zeros(size(theta)),...
+                        [0.2 0.7 0.9],...
+                        'EdgeColor','none');
+
+                    fill3(app.UIAxes,...
+                        r*cos(theta),...
+                        r*sin(theta),...
+                        t*ones(size(theta)),...
+                        [0.2 0.7 0.9],...
+                        'EdgeColor','none');
+
+                    volume = pi*power(r,2)*t;
+
+                    luas = 2*pi*r*(r+t);
+
+                    keterangan = sprintf(...
+                        'Jari-jari = %s | Tinggi = %s',...
+                        app.formatAngka(r),...
+                        app.formatAngka(t));
+
+                    rumusVolume = 'V = π × r² × t';
+                    rumusLuas = 'LP = 2 × π × r × (r + t)';
+
+                    langkahVolume = sprintf(...
+                        'V = π × %s² × %s = %s',...
+                        app.formatAngka(r),...
+                        app.formatAngka(t),...
+                        app.formatAngka(volume));
+
+                    langkahLuas = sprintf(...
+                        'LP = 2 × π × %s × (%s + %s) = %s',...
+                        app.formatAngka(r),...
+                        app.formatAngka(r),...
+                        app.formatAngka(t),...
+                        app.formatAngka(luas));
+
+
+                % ================= KERUCUT =================
+                case 'Kerucut'
+
+                    r = u1;
+                    t = u2;
+
+                    % Menghitung garis pelukis
+                    g = hypot(r,t);
+
+                    [X,Y,Z] = cylinder([r 0],100);
+
+                    Z = Z*t;
+
+                    surf(app.UIAxes,X,Y,Z,...
+                        'FaceColor',[0.9 0.5 0.2],...
+                        'EdgeColor','none',...
+                        'FaceAlpha',0.9);
+
+                    theta = linspace(0,2*pi,100);
+
+                    fill3(app.UIAxes,...
+                        r*cos(theta),...
+                        r*sin(theta),...
+                        zeros(size(theta)),...
+                        [0.9 0.5 0.2],...
+                        'EdgeColor','none');
+
+                    volume = (pi*power(r,2)*t)/3;
+
+                    luas = pi*r*(r+g);
+
+                    keterangan = sprintf(...
+                        'Jari-jari = %s | Tinggi = %s | Garis pelukis = %s',...
+                        app.formatAngka(r),...
+                        app.formatAngka(t),...
+                        app.formatAngka(g));
+
+                    rumusVolume = 'V = (π × r² × t) ÷ 3';
+                    rumusLuas = 'LP = π × r × (r + g)';
+
+                    langkahVolume = sprintf(...
+                        'V = (π × %s² × %s) ÷ 3 = %s',...
+                        app.formatAngka(r),...
+                        app.formatAngka(t),...
+                        app.formatAngka(volume));
+
+                    langkahLuas = sprintf(...
+                        'LP = π × %s × (%s + %s) = %s',...
+                        app.formatAngka(r),...
+                        app.formatAngka(r),...
+                        app.formatAngka(g),...
+                        app.formatAngka(luas));
+
+
+                % ================= BOLA =================
+                case 'Bola'
+
+                    r = u1;
+
+                    [X,Y,Z] = sphere(100);
+
+                    surf(app.UIAxes,...
+                        r*X,r*Y,r*Z,...
+                        'FaceColor',[0.8 0.4 0.8],...
+                        'EdgeColor','none',...
+                        'FaceAlpha',0.9);
+
+                    volume = (4*pi*power(r,3))/3;
+
+                    luas = 4*pi*power(r,2);
+
+                    keterangan = sprintf(...
+                        'Jari-jari = %s',...
+                        app.formatAngka(r));
+
+                    rumusVolume = 'V = (4 × π × r³) ÷ 3';
+                    rumusLuas = 'LP = 4 × π × r²';
+
+                    langkahVolume = sprintf(...
+                        'V = (4 × π × %s³) ÷ 3 = %s',...
+                        app.formatAngka(r),...
+                        app.formatAngka(volume));
+
+                    langkahLuas = sprintf(...
+                        'LP = 4 × π × %s² = %s',...
+                        app.formatAngka(r),...
+                        app.formatAngka(luas));
+
+            end
+
+            % Memeriksa hasil perhitungan
+            if ~isfinite(volume) || ~isfinite(luas)
+
+                cla(app.UIAxes);
+                hold(app.UIAxes,'off');
+
+                uialert(app.UIFigure,...
+                    'Hasil terlalu besar atau di luar batas numerik MATLAB.',...
+                    'Peringatan');
+
+                return;
+
+            end
+
+            % Pengaturan grafik 3D
+            axis(app.UIAxes,'equal');
+            axis(app.UIAxes,'tight');
+
+            grid(app.UIAxes,'on');
+            box(app.UIAxes,'on');
+
+            xlabel(app.UIAxes,'Sumbu X');
+            ylabel(app.UIAxes,'Sumbu Y');
+            zlabel(app.UIAxes,'Sumbu Z');
+
+            title(app.UIAxes,['Visualisasi ',bangun]);
+
+            view(app.UIAxes,3);
+
+            camlight(app.UIAxes,'headlight');
+            lighting(app.UIAxes,'gouraud');
+
+            hold(app.UIAxes,'off');
+
+            % Menampilkan hasil perhitungan
+            app.HasilEdit.Value = {
+
+                sprintf('BANGUN RUANG: %s',bangun)
+
+                keterangan
+
+                ' '
+
+                sprintf('RUMUS VOLUME: %s',rumusVolume)
+
+                langkahVolume
+
+                sprintf('HASIL VOLUME: %s satuan kubik',...
+                    app.formatAngka(volume))
+
+                ' '
+
+                sprintf('RUMUS LUAS PERMUKAAN: %s',rumusLuas)
+
+                langkahLuas
+
+                sprintf('HASIL LUAS PERMUKAAN: %s satuan persegi',...
+                    app.formatAngka(luas))
+
+                ' '
+
+                'Perhitungan berhasil!'
+
+            };
+
+        end
+
+    end
+
+
+    methods (Access = public)
+
+        % Konstruktor aplikasi
+        function app = geospace_3d
+
+            % Membuat jendela aplikasi
+            app.UIFigure = uifigure(...
+                'Position',[100 100 1050 720]);
+
+            app.UIFigure.Name = ...
+                'GeoSpace 3D - Media Pembelajaran Bangun Ruang';
+
+
+            % Grafik 3D
+            app.UIAxes = uiaxes(app.UIFigure,...
+                'Position',[350 265 675 420]);
+
+
+            % Panel masukan
+            app.MasukanPanel = uipanel(app.UIFigure,...
+                'Title','Masukan Bangun Ruang',...
+                'Position',[25 265 290 420]);
+
+
+            % Pilihan bangun ruang
+            uilabel(app.MasukanPanel,...
+                'Text','Pilih Bangun Ruang:',...
+                'Position',[20 345 180 25]);
+
+            app.BangunDropDown = uidropdown(...
+                app.MasukanPanel,...
+                'Items',{'Kubus','Balok','Tabung','Kerucut','Bola'},...
+                'Value','Kubus',...
+                'Position',[20 310 240 30]);
+
+            app.BangunDropDown.ValueChangedFcn = ...
+                createCallbackFcn(app,...
+                @BangunDropDownValueChanged,true);
+
+
+            % Input ukuran pertama
+            app.Ukuran1Label = uilabel(app.MasukanPanel,...
+                'Text','Sisi:',...
+                'Position',[20 255 100 25]);
+
+            app.Ukuran1Edit = uieditfield(...
+                app.MasukanPanel,'numeric',...
+                'Position',[130 255 130 25],...
+                'Value',5);
+
+
+            % Input ukuran kedua
+            app.Ukuran2Label = uilabel(app.MasukanPanel,...
+                'Text','-',...
+                'Position',[20 205 100 25]);
+
+            app.Ukuran2Edit = uieditfield(...
+                app.MasukanPanel,'numeric',...
+                'Position',[130 205 130 25],...
+                'Value',4,...
+                'Enable','off');
+
+
+            % Input ukuran ketiga
+            app.Ukuran3Label = uilabel(app.MasukanPanel,...
+                'Text','-',...
+                'Position',[20 155 100 25]);
+
+            app.Ukuran3Edit = uieditfield(...
+                app.MasukanPanel,'numeric',...
+                'Position',[130 155 130 25],...
+                'Value',3,...
+                'Enable','off');
+
+
+            % Tombol proses
+            app.ProsesButton = uibutton(...
+                app.MasukanPanel,'push',...
+                'Text','PROSES',...
+                'Position',[65 75 160 40],...
+                'BackgroundColor',[0.2 0.5 0.8],...
+                'FontColor',[1 1 1],...
+                'FontWeight','bold');
+
+            app.ProsesButton.ButtonPushedFcn = ...
+                createCallbackFcn(app,...
+                @ProsesButtonPushed,true);
+
+
+            % Panel keluaran
+            app.KeluaranPanel = uipanel(app.UIFigure,...
+                'Title','Hasil Perhitungan',...
+                'Position',[25 20 1000 220]);
+
+
+            % Area hasil
+            app.HasilEdit = uitextarea(...
+                app.KeluaranPanel,...
+                'Position',[10 10 980 185],...
+                'Editable','off',...
+                'FontSize',12);
+
+            app.HasilEdit.Value = {
+                'Selamat datang di GeoSpace 3D!'
+                'Pilih bangun ruang dan masukkan ukurannya.'
+                'Tekan PROSES untuk melihat hasil perhitungan.'
+            };
+
+        end
+
+
+        % Menghapus aplikasi
+        function delete(app)
+
+            delete(app.UIFigure);
+
+        end
+
+    end
+
+end
